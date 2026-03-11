@@ -468,7 +468,7 @@ All settings via `idf.py menuconfig` → MicroLink V2 Configuration.
 | `enable_derp` | `true` | Enable DERP relay |
 | `enable_disco` | `true` | Enable DISCO path discovery |
 | `enable_stun` | `true` | Enable STUN NAT discovery |
-| `max_peers` | `16` | Maximum simultaneous WireGuard peers |
+| `max_peers` | `16` | Maximum simultaneous active WireGuard tunnels (tailnet can have 300+ peers) |
 | `priority_peer_ip` | `0` | VPN IP of priority peer (guaranteed WG slot) |
 | `disco_heartbeat_ms` | `3000` | DISCO keepalive interval |
 | `stun_interval_ms` | `23000` | STUN re-probe interval |
@@ -517,7 +517,7 @@ MicroLink V2 Configuration
 | Option | Default | Description |
 |--------|---------|-------------|
 | `ML_ZERO_COPY_WG` | `n` | Zero-copy WireGuard via raw lwIP PCB (for 30fps+ streaming). See [High-Throughput Mode](#high-throughput-mode-zero-copy-wireguard). |
-| `ML_MAX_PEERS` | `16` | Maximum WG peers (1-64). Each peer uses ~200 bytes. Only count peers you actively communicate with, not total tailnet size. Reduce to 8 for non-PSRAM. |
+| `ML_MAX_PEERS` | `16` | Maximum simultaneous active WireGuard tunnels (1-64). Each uses ~200 bytes. This is NOT the tailnet size limit — MicroLink tracks all peers (300+) but only maintains active tunnels to this many at once. Reduce to 8 for non-PSRAM. |
 | `ML_NVS_MAX_PEERS` | `64` | Peers cached in NVS flash (16-1024). Persists across reboots so DISCO probing starts immediately. Each entry: 92 bytes. LRU eviction when full. |
 | `ML_PRIORITY_PEER_IP` | Empty | Priority peer VPN IP (e.g., `100.81.222.123`). Guaranteed a WG slot even when peer table is full — LRU non-priority peer is evicted. Also settable via web UI. |
 | `ML_H2_BUFFER_SIZE_KB` | `512` | H2 receive buffer (64-2048 KB, PSRAM-backed). Size determines max tailnet: 64KB ≈ 30 peers, 512KB ≈ 300 peers, 2048KB ≈ 1200 peers. |
