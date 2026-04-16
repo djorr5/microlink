@@ -309,6 +309,7 @@ static esp_err_t wg_init_interface(microlink_t *ml) {
 #endif
 
     ml->wg_netif = netif;
+    ml_lwip_set_wg_netif(netif);
 
     /* Verify WG device public key matches our expected key */
     {
@@ -1649,6 +1650,7 @@ void ml_wg_mgr_task(void *arg) {
         netif_remove(netif);
         free(netif);
         ml->wg_netif = NULL;
+        ml_lwip_set_wg_netif(NULL);
     }
 
     ESP_LOGI(TAG, "WG Manager task exiting");

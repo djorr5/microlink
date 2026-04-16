@@ -380,6 +380,7 @@ struct microlink_s {
     /* Coordination socket (owned exclusively by coord task) */
     int coord_sock;
     uint32_t h2_next_stream_id;         /* Next H2 stream ID for endpoint updates (odd, starts at 7) */
+    uint32_t h2_rx_window_size;         /* Runtime H2 stream/conn window for MapResponse receive */
 
     /* WireGuard netif (owned exclusively by wg_mgr task) */
     void *wg_netif;
@@ -511,7 +512,7 @@ int ml_h2_build_headers_frame(uint8_t *out, size_t out_size,
 int ml_h2_build_data_frame(uint8_t *out, size_t out_size,
                             const uint8_t *data, size_t data_len,
                             uint32_t stream_id, bool end_stream);
-int ml_h2_build_preface(uint8_t *out, size_t out_size);
+int ml_h2_build_preface(uint8_t *out, size_t out_size, uint32_t window_size);
 int ml_h2_build_settings_ack(uint8_t *out, size_t out_size);
 int ml_h2_build_window_update(uint8_t *out, size_t out_size,
                                uint32_t stream_id, uint32_t increment);
@@ -533,6 +534,10 @@ esp_err_t ml_zerocopy_send(microlink_t *ml, const uint8_t *data, size_t len,
 
 /* Utility */
 uint64_t ml_get_time_ms(void);
+
+/* ml_lwip_hooks.c */
+struct netif;
+void ml_lwip_set_wg_netif(struct netif *netif);
 
 /* ============================================================================
  * Network Socket Wrappers — Route through AT sockets when cellular active
