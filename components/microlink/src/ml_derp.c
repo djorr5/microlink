@@ -497,7 +497,15 @@ void ml_derp_tx_task(void *arg) {
         loop_count++;
         uint64_t loop_start = ml_get_time_ms();
 
-        /* Unconditional heartbeat - proves task is alive */
+        /* Unconditional heartbeat - proves task is alive.
+         * Was ESP_LOGW - a plain liveness probe, not a warning condition.
+         * At LOGW it survives even a restrictive "errors and warnings
+         * only" filter, which is presumably why it ended up here during
+         * original bring-up debugging, but it means every consumer sees
+         * a "warning" every 5 seconds forever, indefinitely, even on a
+         * perfectly healthy connection. A routine "still here, nothing
+         * new" pulse belongs at Debug, not Info - INFO is for things that
+         * actually changed, not proof of life. */
         if (loop_start - last_heartbeat_ms > 5000) {
             ESP_LOGD(TAG, "HEARTBEAT: loop=%lu conn=%d rx=%lu tx=%lu stack_free=%lu",
                      (unsigned long)loop_count, ml->derp.connected,

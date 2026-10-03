@@ -204,7 +204,14 @@ static err_t wg_udp_output_cb(uint32_t dest_ip, uint16_t dest_port,
     microlink_t *ml = (microlink_t *)ctx;
     if (!ml) return ERR_CONN;
 
-    /* Log WG packets sent via direct UDP */
+    /* Log WG packets sent via direct UDP.
+     * Was ESP_LOGI - fires on *every* packet sent over the tunnel
+     * (handshakes, keepalives, and every real data-plane packet carrying
+     * actual tunneled traffic). At Info, this alone can make the log look
+     * like every packet is being traced under any real traffic load. The
+     * dedicated handshake-initiation log has its own properly-scoped LOGI
+     * elsewhere (gated on message type 0x01) - this unconditional one is
+     * Debug material. */
     uint32_t ip_host = ntohl(dest_ip);
     ESP_LOGD(TAG, "WG UDP TX: %d bytes -> %d.%d.%d.%d:%d type=%d",
              (int)len,
