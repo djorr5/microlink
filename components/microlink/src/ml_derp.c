@@ -884,17 +884,13 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
     esp_err_t err = derp_recv_frame_header(ml, &frame_type, &frame_len, DERP_CONNECT_TIMEOUT_MS);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read ServerKey frame header (err=%d)", err);
-        ml_close_sock(sock);
-        ml->derp.sockfd = -1;
-        return ESP_FAIL;
+        goto fail;
     }
 
     if (frame_type != DERP_FRAME_SERVER_KEY || frame_len < 40) {
         ESP_LOGE(TAG, "Expected ServerKey frame (0x01), got 0x%02x len=%lu",
                  frame_type, (unsigned long)frame_len);
-        ml_close_sock(sock);
-        ml->derp.sockfd = -1;
-        return ESP_FAIL;
+        goto fail;
     }
 
     /* Read and verify 8-byte magic */
@@ -902,18 +898,14 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
     static const uint8_t DERP_MAGIC[8] = {0x44, 0x45, 0x52, 0x50, 0xf0, 0x9f, 0x94, 0x91};
     if (derp_tls_read_all(ml, magic, 8, DERP_CONNECT_TIMEOUT_MS) < 0) {
         ESP_LOGE(TAG, "Failed to read ServerKey magic");
-        ml_close_sock(sock);
-        ml->derp.sockfd = -1;
-        return ESP_FAIL;
+        goto fail;
     }
 
     if (memcmp(magic, DERP_MAGIC, 8) != 0) {
         ESP_LOGE(TAG, "Invalid DERP magic: %02x%02x%02x%02x%02x%02x%02x%02x",
                  magic[0], magic[1], magic[2], magic[3],
                  magic[4], magic[5], magic[6], magic[7]);
-        ml_close_sock(sock);
-        ml->derp.sockfd = -1;
-        return ESP_FAIL;
+        goto fail;
     }
     ESP_LOGI(TAG, "DERP magic verified");
 
@@ -921,9 +913,7 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
     uint8_t derp_server_key[32];
     if (derp_tls_read_all(ml, derp_server_key, 32, DERP_CONNECT_TIMEOUT_MS) < 0) {
         ESP_LOGE(TAG, "Failed to read server key");
-        ml_close_sock(sock);
-        ml->derp.sockfd = -1;
-        return ESP_FAIL;
+        goto fail;
     }
 
     ESP_LOGI(TAG, "DERP server key received (first 8): %02x%02x%02x%02x%02x%02x%02x%02x",
@@ -955,9 +945,7 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
         size_t ciphertext_len = json_len + NACL_BOX_MACBYTES;
         uint8_t *ciphertext = malloc(ciphertext_len);
         if (!ciphertext) {
-            ml_close_sock(sock);
-            ml->derp.sockfd = -1;
-            return ESP_FAIL;
+            goto fail;
         }
 
         if (nacl_box(ciphertext,
@@ -968,9 +956,7 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
                      ) != 0) {
             ESP_LOGE(TAG, "NaCl box encrypt failed");
             free(ciphertext);
-            ml_close_sock(sock);
-            ml->derp.sockfd = -1;
-            return ESP_FAIL;
+            goto fail;
         }
 
         /* Build ClientInfo frame payload: nodekey(32) + nonce(24) + ciphertext */
@@ -978,9 +964,7 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
         uint8_t *ci_payload = malloc(ci_payload_len);
         if (!ci_payload) {
             free(ciphertext);
-            ml_close_sock(sock);
-            ml->derp.sockfd = -1;
-            return ESP_FAIL;
+            goto fail;
         }
 
         memcpy(ci_payload, ml->wg_public_key, 32);
@@ -998,9 +982,7 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
         if (derp_write_frame(ml, DERP_FRAME_CLIENT_INFO, ci_payload, ci_payload_len) < 0) {
             ESP_LOGE(TAG, "Failed to send ClientInfo");
             free(ci_payload);
-            ml_close_sock(sock);
-            ml->derp.sockfd = -1;
-            return ESP_FAIL;
+            goto fail;
         }
         free(ci_payload);
 
@@ -1052,6 +1034,17 @@ esp_err_t ml_derp_connect(microlink_t *ml) {
              (t_derp_done - t_derp_tls) / 1000);
     ESP_LOGI(TAG, "DERP handshake complete, connected");
     return ESP_OK;
+
+fail:
+    /* Every failure after the TLS init lands here: free what
+     * ml_derp_disconnect() would, since it only runs for a stored connection. */
+    mbedtls_ssl_free(&ml->derp.ssl);
+    mbedtls_ssl_config_free(&ml->derp.ssl_conf);
+    mbedtls_ctr_drbg_free(&ml->derp.ctr_drbg);
+    mbedtls_entropy_free(&ml->derp.entropy);
+    ml_close_sock(sock);
+    ml->derp.sockfd = -1;
+    return ESP_FAIL;
 }
 
 void ml_derp_disconnect(microlink_t *ml) {
