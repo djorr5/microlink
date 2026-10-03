@@ -448,6 +448,9 @@ struct microlink_s {
     /* Key expiry (parsed from MapResponse self-node) */
     int64_t key_expiry_epoch;       /* Unix epoch seconds, 0 = no expiry */
     bool key_expired;               /* true if Node.Expired == true */
+    /* Our MagicDNS FQDN (Node.Name, trailing dot stripped), e.g. "host.tailnet.ts.net";
+     * empty until a MapResponse names us. Written only from coord. */
+    char self_name[128];
 
     /* Resolved timing (set during init from config, 0 = default) */
     uint32_t t_disco_heartbeat_ms;

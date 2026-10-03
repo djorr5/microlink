@@ -147,6 +147,13 @@ esp_err_t microlink_factory_reset(void) {
     return ESP_OK;
 }
 
+esp_err_t microlink_clear_peer_cache(void) {
+    ml_peer_nvs_init();
+    esp_err_t err = ml_peer_nvs_clear();
+    ml_peer_nvs_deinit();
+    return err;
+}
+
 /* ============================================================================
  * Public API
  * ========================================================================== */
@@ -595,6 +602,18 @@ uint32_t microlink_get_vpn_ip(const microlink_t *ml) {
 
 int microlink_get_peer_count(const microlink_t *ml) {
     return ml ? ml->peer_count : 0;
+}
+
+const char *microlink_get_self_name(const microlink_t *ml) {
+    return ml ? ml->self_name : "";
+}
+
+int64_t microlink_get_key_expiry(const microlink_t *ml) {
+    return ml ? ml->key_expiry_epoch : 0;
+}
+
+bool microlink_key_expired(const microlink_t *ml) {
+    return ml ? ml->key_expired : false;
 }
 
 esp_err_t microlink_get_peer_info(const microlink_t *ml, int index, microlink_peer_info_t *info) {

@@ -94,6 +94,16 @@ typedef void (*microlink_data_cb_t)(microlink_t *ml, uint32_t src_ip, const uint
 esp_err_t microlink_factory_reset(void);
 
 /**
+ * @brief Clear only the cached peer table from NVS (keys are preserved)
+ * @return ESP_OK on success
+ *
+ * Must be called BEFORE microlink_init(). Erases:
+ * - Cached peer data (NVS namespace "ml_peers")
+ * Keys and identity are untouched; next init will re-discover peers normally.
+ */
+esp_err_t microlink_clear_peer_cache(void);
+
+/**
  * @brief Initialize MicroLink
  * @param config Configuration (copied internally)
  * @return Handle on success, NULL on failure
@@ -166,6 +176,32 @@ uint32_t microlink_get_vpn_ip(const microlink_t *ml);
  * @brief Get number of known peers
  */
 int microlink_get_peer_count(const microlink_t *ml);
+
+/**
+ * @brief Get our own MagicDNS name (FQDN) as assigned by the control plane
+ * @return NUL-terminated FQDN (e.g. "host.tailnet.ts.net"), or "" if not yet known
+ *
+ * Available once the first MapResponse has named this node. The trailing dot,
+ * if any, is stripped.
+ */
+const char *microlink_get_self_name(const microlink_t *ml);
+
+/**
+ * @brief When this node's key expires, as the control plane reported it
+ * @return Unix epoch seconds, or 0 when no expiry is known (key expiry
+ *         disabled for the node, or the first MapResponse has not arrived)
+ *
+ * Tailscale caps a node key at six months, so a device that is left alone
+ * falls off the tailnet unless the key is renewed. The date comes from the
+ * self node in the MapResponse; comparing it with the wall clock is the
+ * caller's business (and needs the clock to be set).
+ */
+int64_t microlink_get_key_expiry(const microlink_t *ml);
+
+/**
+ * @brief Whether the control plane has already declared the key expired
+ */
+bool microlink_key_expired(const microlink_t *ml);
 
 /**
  * @brief Get peer info by index
