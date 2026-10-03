@@ -236,6 +236,8 @@ typedef struct {
         bool is_ipv6;
     } endpoints[ML_MAX_ENDPOINTS];
     int endpoint_count;
+    bool online;                /* Node.Online from MapResponse */
+    bool online_valid;          /* false when a patch omitted Online */
 } ml_peer_update_t;
 
 /* ============================================================================
@@ -248,7 +250,8 @@ typedef struct {
     uint8_t public_key[32];
     uint8_t disco_key[32];
     char hostname[64];
-    bool active;
+    bool active;                /* occupies a slot in this table */
+    bool online;                /* control plane last reported it reachable */
 
     /* Endpoints */
     struct {
